@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<plugin
+   id="dubboPlugin"
+   iconfile="DubboClient.png"
+   description="Dubbo Plugin"
+   tooltip="这是一个dubbo客户端"
+   category="自定义组件11"
+   classname="com.jk.di.trans.steps.dubboclient.DubboClientMeta">
+   <libraries>
+    <library name="libext/dubboPlugin.jar"/>
+    <library name="libext/zookeeper-3.3.3.jar"/>
+    <library name="libext/zkclient-0.1.jar"/>
+    <library name="libext/spring-2.5.6.SEC03.jar"/>
+    <library name="libext/netty-3.2.5.Final.jar"/>
+    <library name="libext/junit-3.8.1.jar"/>
+    <library name="libext/jline-0.9.94.jar"/>
+    <library name="libext/log4j-1.2.15.jar"/>
+    <library name="libext/gson-2.2.4.jar"/>
+    <library name="libext/dubbo-2.5.3.jar"/>
+    <library name="libext/commons-logging-1.1.1.jar"/>
+    </libraries>
+    
+   <localized_category>
+     <category locale="en_US">DIY plugins</category>
+     <category locale="zh_CN">自定义组件</category>
+   </localized_category>
+   <localized_description>
+     <description locale="en_US">Dubbo Client</description>
+      <description locale="zh_CN">Dubbo客户端</description>
+   </localized_description>
+   <localized_tooltip>
+     <tooltip locale="en_US">This is Dubbo Client </tooltip>
+      <tooltip locale="zh_CN">这是一个Dubbo 客户端，用于请求服务，返回数据</tooltip>
+   </localized_tooltip>
+   
+</plugin>
