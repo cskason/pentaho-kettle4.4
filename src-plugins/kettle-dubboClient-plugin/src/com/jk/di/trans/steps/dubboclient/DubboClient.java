@@ -35,6 +35,7 @@ import org.pentaho.di.trans.step.StepMetaInterface;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
+import com.alibaba.dubbo.config.utils.ReferenceConfigCache;
 import com.google.gson.Gson;
 import com.jk.di.ui.trans.steps.dubboclient.utils.DynamicClassLoader;
 import com.jk.di.ui.trans.steps.dubboclient.utils.ReflectionUtil;
@@ -165,14 +166,17 @@ public class DubboClient extends BaseStep implements StepInterface {
 			// 注意：ReferenceConfig为重对象，内部封装了与注册中心的连接，以及与服务提供方的连接
 
 			// 引用远程服务
-			// 此实例很重，封装了与注册中心的连接以及与提供者的连接，请自行缓存，否则可能造成内存和连接泄漏
+			// 此实例很重，封装了与注册中心的连接以及与提供者的连接，需要缓存，否则可能造成内存和连接泄漏
 			ReferenceConfig reference = new ReferenceConfig();
 			reference.setApplication(app);
 			reference.setRegistry(registry); // 多个注册中心可以用setRegistries()
 			reference.setInterface(serviceClazz);
 			reference.setVersion("1.0.0");
 			reference.setProtocol("dubbo");
-			Object service = reference.get();
+			
+			ReferenceConfigCache cache = ReferenceConfigCache.getCache();  //缓存，避免内存泄漏
+			Object service =cache.get(reference);
+			//Object service = reference.get();
 			
 			
 			// 得到具体的method
@@ -205,7 +209,7 @@ public class DubboClient extends BaseStep implements StepInterface {
 			
 			// 通过反射来调用
 			Object result = ReflectionUtil.invoke(execMethod, service, realArgValues);
-			reference.destroy(); // 是否是必须的?
+			//reference.destroy(); // 是否是必须的?
 			if(meta.getReturnGetSetMethod()!=null&& !"".equals(meta.getReturnGetSetMethod()))
 			{
 				Class resultClass = result.getClass();
