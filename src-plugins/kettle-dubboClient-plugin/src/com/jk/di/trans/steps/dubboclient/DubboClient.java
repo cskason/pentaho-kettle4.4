@@ -149,6 +149,7 @@ public class DubboClient extends BaseStep implements StepInterface {
 		// 使用dubbo client api 请求dubbo服务
 		DynamicClassLoader dynaClassLoader = DubboClientMeta.dynaClassLoader;
 		Class<?> serviceClazz = null;
+		ReferenceConfig reference=null;
 		try {
 			serviceClazz = dynaClassLoader.loadClass(execInterface);
 			// 配置当前应用
@@ -167,7 +168,7 @@ public class DubboClient extends BaseStep implements StepInterface {
 
 			// 引用远程服务
 			// 此实例很重，封装了与注册中心的连接以及与提供者的连接，需要缓存，否则可能造成内存和连接泄漏
-			ReferenceConfig reference = new ReferenceConfig();
+			 reference = new ReferenceConfig();
 			reference.setApplication(app);
 			reference.setRegistry(registry); // 多个注册中心可以用setRegistries()
 			reference.setInterface(serviceClazz);
@@ -229,6 +230,9 @@ public class DubboClient extends BaseStep implements StepInterface {
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new KettleException(e);
+		}
+		finally{
+		reference.destroy();
 		}
 		
 		return false;
