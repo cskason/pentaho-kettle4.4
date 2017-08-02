@@ -47,6 +47,9 @@ public class DubboClient extends BaseStep implements StepInterface {
 	private DubboClientMeta meta;
 	private DubboClientData data;
 	
+	
+	ReferenceConfigCache cache = ReferenceConfigCache.getCache();  //缓存，避免内存泄漏
+	
 	private static Gson gson = new Gson();
 
 	public DubboClient(StepMeta stepMeta, StepDataInterface stepDataInterface,
@@ -150,6 +153,7 @@ public class DubboClient extends BaseStep implements StepInterface {
 		DynamicClassLoader dynaClassLoader = DubboClientMeta.dynaClassLoader;
 		Class<?> serviceClazz = null;
 		ReferenceConfig reference=null;
+		
 		try {
 			serviceClazz = dynaClassLoader.loadClass(execInterface);
 			// 配置当前应用
@@ -175,8 +179,9 @@ public class DubboClient extends BaseStep implements StepInterface {
 			reference.setVersion("1.0.0");
 			reference.setProtocol("dubbo");
 			
-			ReferenceConfigCache cache = ReferenceConfigCache.getCache();  //缓存，避免内存泄漏
-			Object service =cache.get(reference);
+			
+			Object service =cache.get(reference); //修改为从缓存获取，避免内存泄露
+			
 			//Object service = reference.get();
 			
 			
@@ -228,12 +233,13 @@ public class DubboClient extends BaseStep implements StepInterface {
 			
 			
 		} catch (Exception e) {
-			e.printStackTrace();
+			  e.printStackTrace();//
+			     reference.destroy(); //异常情况下，销毁
+			     cache.destroy(reference);
+			 
 			throw new KettleException(e);
 		}
-		finally{
-		reference.destroy();
-		}
+		
 		
 		return false;
 	}
