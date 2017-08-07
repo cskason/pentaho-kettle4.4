@@ -37,6 +37,8 @@ import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
 import com.alibaba.dubbo.config.utils.ReferenceConfigCache;
 import com.google.gson.Gson;
+import com.hnair.opcnet.api.complextype.PageParam;
+import com.hnair.opcnet.api.complextype.PageResult;
 import com.jk.di.ui.trans.steps.dubboclient.utils.DynamicClassLoader;
 import com.jk.di.ui.trans.steps.dubboclient.utils.ReflectionUtil;
 
@@ -193,6 +195,12 @@ public class DubboClient extends BaseStep implements StepInterface {
 			}
 			
 			Object[] realArgValues = null;
+			String paraMethodName="getPageParam";
+			Method getParamMethod=null;
+			int paramIndex=0;
+			
+			//分页参数
+			PageParam param;
 			
 			// TODO 参数类型变换
 			// 对于复杂数据类型,传递过来的是json字符串,需要还原为实际的对象
@@ -202,32 +210,75 @@ public class DubboClient extends BaseStep implements StepInterface {
 					Class<?> argType = execMethodArgTypes[i];
 					String className = argType.getCanonicalName();
 					if(!className.startsWith("java.lang")) {
-						
+						paramIndex=i;
 						String value = argValues[i];
-						if(inputParam!=null){
+						 if(inputParam!=null){
 						    value = setParam( inputParam, value );
+						 }
+						 this.logBasic("paramType:"+argType.getName()+" paramValue:"+value);
+						 realArgValues[i] = gson.fromJson(value, argType);
+						 getParamMethod = argType.getMethod(paraMethodName);
+						if(getParamMethod!=null)
+						{
+							 param =(PageParam)	getParamMethod.invoke(realArgValues[i], null);
 						}
-						this.logBasic("paramType:"+argType.getName()+" paramValue:"+value);
-						realArgValues[i] = gson.fromJson(value, argType);
+						
 					}
 				}
 			}
 			
+			List<Object> resultList = new ArrayList<Object>();
+			
 			// 通过反射来调用
 			Object result = ReflectionUtil.invoke(execMethod, service, realArgValues);
-			//reference.destroy(); // 是否是必须的?
-			if(meta.getReturnGetSetMethod()!=null&& !"".equals(meta.getReturnGetSetMethod()))
+			
+			resultList.add(result);
+			Class resultClass = result.getClass();
+			
+			Method method = resultClass.getMethod("getPageResult"); //获取
+			if(method!=null)
 			{
-				Class resultClass = result.getClass();
-				Method method = resultClass.getMethod(meta.getReturnGetSetMethod(), null);
-				
-				result = ReflectionUtil.invoke(method, result, null);
+				Object pageResultObj = ReflectionUtil.invoke(method, result, null);
+				if(pageResultObj instanceof PageResult )
+				{
+					PageResult  pageReuslt = (PageResult)pageResultObj;
+					int pageIndex=pageReuslt.getPageIndex();
+					int totalPage = pageReuslt.getTotalPages();
+					int totalCount = pageReuslt.getTotalRecords();
+					if(totalPage>pageIndex)
+					{
+						this.logBasic("总记录数="+totalCount+" 页大小="+pageReuslt.getPageSize()+" 总页数="+totalPage+" 需要分"+totalPage+"次请求");
+						for(int i=pageIndex+1;i<=totalPage;i++) //分页结果中，发现有多页存在，则循环请求多次
+						{
+								Object paramObj = realArgValues[paramIndex]; //重新设置分页
+								PageParam paramnew = (PageParam)ReflectionUtil.invoke(getParamMethod, paramObj, null);
+								paramnew.setPageIndex(i);
+								
+								Method setParamMethod = execMethodArgTypes[paramIndex].getMethod("setPageParam", PageParam.class); 
+								ReflectionUtil.invoke(setParamMethod, paramObj, paramnew); //修改参数，重新传值
+								realArgValues[paramIndex]=paramObj;
+							    Object resultPage = ReflectionUtil.invoke(execMethod, service, realArgValues); //修改分页参数后再次请求dubbo
+							    this.logBasic("第"+(i-1)+"次请求完成");
+							    resultList.add(resultPage);
+						}
+					}
+				}
 			}
 			
+			for(Object resultn:resultList){  //遍历多次请求结果
 			
-			// 处理返回结果
-			//processOutput(result, execMethodReturnType);
-			processOutput(result);
+			if(meta.getReturnGetSetMethod()!=null&& !"".equals(meta.getReturnGetSetMethod()))
+			{
+				Method returnGetSetMethod = resultClass.getMethod(meta.getReturnGetSetMethod(), null);
+				result = ReflectionUtil.invoke(returnGetSetMethod, resultn, null);
+			}
+			
+			if(result!=null ){
+			  // 处理返回结果
+			  //processOutput(result, execMethodReturnType);
+			    processOutput(result);
+			 }
+			}
 			// 结束状态设置
 			setOutputDone();
 			
@@ -242,6 +293,12 @@ public class DubboClient extends BaseStep implements StepInterface {
 		
 		
 		return false;
+	}
+	
+	private Object dealParamRequest()
+	{
+		
+		return null;
 	}
 	
 	/**
